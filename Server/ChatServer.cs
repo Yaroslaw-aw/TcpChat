@@ -1,5 +1,7 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
+using System.Text;
 
 namespace Server
 {
@@ -9,7 +11,7 @@ namespace Server
 
         HashSet<TcpClient> senders = new HashSet<TcpClient>(); // добавляет только уникальных пользователей
 
-        public ChatServer(IPEndPoint endPoint)
+        public ChatServer(IPEndPoint? endPoint)
         {
             listener = new TcpListener(endPoint);
         }
@@ -18,74 +20,99 @@ namespace Server
         /// Запуск сервера
         /// </summary>
         /// <returns></returns>
-        public async Task Run()
+        public void Run(object state, bool timeOut)
         {
+            Console.Out.WriteLineAsync("Сервер\n" + new string('-', 6));
             try
             {
                 listener.Start();
 
-                await Console.Out.WriteLineAsync("Запущен");
+                Console.Out.WriteLineAsync("Запущен");
 
                 while (true)
                 {
-                    TcpClient? tcpClient = await listener.AcceptTcpClientAsync();
+                    TcpClient? tcpClient = listener.AcceptTcpClient();
 
                     senders.Add(tcpClient);
 
+                    Task entry = Task.Run(() => ProcessClient(tcpClient));
+
                     Console.WriteLine("Успешно подключен");
 
-                    Task entry = Task.Run(() => ProcessClient(tcpClient));
+                    using (StreamWriter writer = new StreamWriter(tcpClient.GetStream(), leaveOpen: true))
+                    {
+                        writer.WriteLineAsync("Сервер: соединение установленно");
+                        writer.FlushAsync();
+                    };
                 }
             }
             catch (Exception ex)
             {
-                await Console.Out.WriteLineAsync(ex.Message);
+                Console.Out.WriteLineAsync(ex.Message);
             }
-        }
-
-        /// <summary>
-        /// Прослушивание входящих и отправка всем остальным клиентам сообщений
-        /// </summary>
-        /// <param name="client">присоединяющийся клиент</param>
-        /// <returns></returns>
-        public async Task ProcessClient(TcpClient client)
-        {
-            try
+            finally
             {
-                using var reader = new StreamReader(client.GetStream());
-                string? message;
+                Dispose();
+            }
 
-                while (!string.IsNullOrEmpty(message = await reader.ReadLineAsync())) // если сообщение не пустое
+            /// <summary>
+            /// Прослушивание входящих и отправка всем остальным клиентам сообщений
+            /// </summary>
+            /// <param name="client">присоединяющийся клиент</param>
+            /// <returns></returns>
+            async Task ProcessClient(TcpClient client)
+            {
+                try
                 {
-                    Console.WriteLine($"Получено сообщение: {message}");
+                    using var reader = new StreamReader(client.GetStream());
 
-                    foreach (var sender in senders)
+                    string? message;
+
+                    while (!string.IsNullOrEmpty(message = await reader.ReadLineAsync())) // если сообщение не пустое
                     {
-                        if (sender != client)
+                        Console.WriteLine($"{message}");
+
+                        foreach (var sender in senders)
                         {
-                            try
+                            // Создаем StreamWriter для отправки, не сохраняя его
+                            using var writer = new StreamWriter(sender.GetStream(), leaveOpen: true);
+
+                            if (sender != client)
                             {
-                                // Создаем StreamWriter для отправки, не сохраняя его
-                                var writer = new StreamWriter(sender.GetStream(), leaveOpen: true);
-                                await writer.WriteLineAsync(message);
-                                await writer.FlushAsync(); // Убедимся, что сообщение отправлено немедленно
+                                try
+                                {
+                                    await writer.WriteLineAsync(message);
+                                    await writer.FlushAsync(); // Убедимся, что сообщение отправлено немедленно
+                                }
+                                catch
+                                {
+                                    // Обработка ошибок отправки
+                                }
                             }
-                            catch
+                            else
                             {
-                                // Обработка ошибок отправки
+                                await writer.WriteLineAsync("Сообщение доставлено.");
+                                await writer.FlushAsync();
                             }
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Ошибка при обработке клиента: {ex.Message}");
+                }
+                finally
+                {
+                    senders.Remove(client); // высвобождаем ресурсы
+                    client.Close();
+                }
             }
-            catch (Exception ex)
+
+            void Dispose() // У меня вопрос: правильный ли вообще этот метод?
             {
-                Console.WriteLine($"Ошибка при обработке клиента: {ex.Message}");
-            }
-            finally
-            {
-                senders.Remove(client); // высвобождаем ресурсы
-                client.Close();
+                listener.Stop();
+                listener.Dispose();
+                GC.SuppressFinalize(this);
             }
         }
     }

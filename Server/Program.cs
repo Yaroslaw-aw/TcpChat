@@ -6,10 +6,31 @@ namespace Server
     {
         static async Task Main(string[] args)
         {
-            IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 55555);
+            AutoResetEvent stopper = new AutoResetEvent(false);
 
-            var server = new ChatServer(endPoint);
-            await server.Run();
+            IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 55555);
+            ChatServer tcpServer = new ChatServer(endPoint);
+
+            RegisteredWaitHandle handle = ThreadPool.RegisterWaitForSingleObject(stopper, tcpServer.Run, null, Timeout.Infinite, true);
+
+            string operation = "S";
+
+            Console.WriteLine("Q - выход");
+
+            while (true)
+            {
+                if (operation == "S")
+                {
+                    stopper.Set();
+                }
+                if (operation == "Q" || operation == "Й")
+                {
+                    handle.Unregister(stopper);
+                    break;
+                }
+
+                operation = Console.ReadKey(true).KeyChar.ToString().ToUpper();
+            }
         }
     }
 }

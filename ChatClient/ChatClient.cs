@@ -8,10 +8,15 @@ namespace Client
         private TcpClient client;
         private IPEndPoint endPoint;
 
+        CancellationTokenSource tokenSource;
+        CancellationToken token;
+
         public ChatClient(IPEndPoint endPoint)
         {
             this.client = new TcpClient();
             this.endPoint = endPoint;
+            this.tokenSource = new CancellationTokenSource();
+            this.token = tokenSource.Token;
         }
 
         /// <summary>
@@ -20,10 +25,11 @@ namespace Client
         /// <returns></returns>
         public async Task Run()
         {
+            await Console.Out.WriteLineAsync("Клиент\n" + new string('-', 6));
             try
             {
                 await client.ConnectAsync(endPoint); // Асинхронное подключение
-                Console.WriteLine("Соединён");
+                Console.WriteLine("Соединение");
 
                 var stream = client.GetStream();
                 var writer = new StreamWriter(stream);
@@ -32,10 +38,16 @@ namespace Client
                 var receiveTask = ReceiveMessages(reader); // Задача для получения сообщений
 
                 // Отправка сообщений в цикле
-                while (true)
+                while (!token.IsCancellationRequested)
                 {
                     string? message = Console.ReadLine();
                     if (string.IsNullOrEmpty(message)) continue; // Если ввод пустой, делаем вид, что ничего не произошло
+
+                    if (message.ToLower() == "exit")
+                    {
+                        tokenSource.Cancel();
+                        token.ThrowIfCancellationRequested();
+                    }
 
                     await writer.WriteLineAsync(message);
                     await writer.FlushAsync();
@@ -43,9 +55,13 @@ namespace Client
 
                 //client.Close();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine("До новых встреч!");
+            }
+            finally
+            {
+                client.Close();
             }
         }
 
@@ -64,11 +80,10 @@ namespace Client
                     Console.WriteLine(message);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine($"Ошибка при получении сообщений: {ex.Message}");
+                //Console.WriteLine($"Ошибка при получении сообщений: {ex.Message}");
             }
         }
     }
-
 }
