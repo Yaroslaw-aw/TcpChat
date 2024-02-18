@@ -10,11 +10,12 @@ namespace Server
     {
         TcpListener listener;
 
-        CuncurrentHashSet<TcpClient> senders = new CuncurrentHashSet<TcpClient>(); // добавляет только уникальных пользователей
+        CuncurrentHashSet<TcpClient> clients = new CuncurrentHashSet<TcpClient>(); // добавляет только уникальных пользователей
 
         public ChatServer(IPEndPoint? endPoint)
         {
-            listener = new TcpListener(endPoint);
+            if (endPoint != null)
+                listener = new TcpListener(endPoint);
         }
 
         public void Dispose()
@@ -41,7 +42,7 @@ namespace Server
                 {
                     TcpClient? tcpClient = listener.AcceptTcpClient();
 
-                    senders.Add(tcpClient);
+                    clients.Add(tcpClient);
 
                     Task entry = Task.Run(() => ProcessClient(tcpClient));
 
@@ -80,7 +81,7 @@ namespace Server
                     {
                         Console.WriteLine($"{message}");
 
-                        foreach (var sender in senders)
+                        foreach (var sender in clients)
                         {
                             // Создаем StreamWriter для отправки, не сохраняя его
                             using var writer = new StreamWriter(sender.GetStream(), leaveOpen: true);
@@ -109,11 +110,11 @@ namespace Server
                 {
                     Console.WriteLine($"Ошибка при обработке клиента: {ex.Message}");
                 }
-                finally
+                finally // высвобождаем ресурсы
                 {
-                    lock (senders)
+                    lock (clients)
                     {
-                        senders.Remove(client); // высвобождаем ресурсы
+                        clients.Remove(client); 
                     }
                     client.GetStream().Close();
                     client.Close();
