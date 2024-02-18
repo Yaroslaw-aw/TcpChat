@@ -19,7 +19,9 @@ namespace Server
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            listener.Stop();
+            listener.Server.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>
@@ -116,13 +118,6 @@ namespace Server
                     client.GetStream().Close();
                     client.Close();
                 }
-            }
-
-            void Dispose() // У меня вопрос: правильный ли вообще этот метод?
-            {
-                listener.Stop();
-                listener.Server.Dispose();
-                GC.SuppressFinalize(this);
             }
         }
     }
