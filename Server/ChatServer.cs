@@ -26,7 +26,7 @@ namespace Server
         /// Запуск сервера
         /// </summary>
         /// <returns></returns>
-        public void Run(object state, bool timeOut)
+        public void Run(object? state, bool timeOut)
         {
             Console.Out.WriteLineAsync("Сервер\n" + new string('-', 6));
             try
