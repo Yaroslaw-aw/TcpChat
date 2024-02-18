@@ -8,7 +8,7 @@ namespace Server
 {
     internal class ChatServer : IDisposable
     {
-        TcpListener listener;
+        TcpListener? listener;
 
         CuncurrentHashSet<TcpClient> clients = new CuncurrentHashSet<TcpClient>(); // добавляет только уникальных пользователей
 
@@ -20,8 +20,11 @@ namespace Server
 
         public void Dispose()
         {
-            listener.Stop();
-            listener.Server.Dispose();
+            if (listener != null)
+            {
+                listener.Stop();
+                listener.Server.Dispose();
+            }
             GC.SuppressFinalize(this);
         }
 
@@ -34,26 +37,29 @@ namespace Server
             Console.Out.WriteLineAsync("Сервер\n" + new string('-', 6));
             try
             {
-                listener.Start();
+                if (listener != null)
+                    listener.Start();
 
                 Console.Out.WriteLineAsync("Запущен");
 
-                while (true)
-                {
-                    TcpClient? tcpClient = listener.AcceptTcpClient();
-
-                    clients.Add(tcpClient);
-
-                    Task entry = Task.Run(() => ProcessClient(tcpClient));
-
-                    Console.WriteLine("Успешно подключен");
-
-                    using (StreamWriter writer = new StreamWriter(tcpClient.GetStream(), leaveOpen: true))
+                if (listener != null)
+                    while (true)
                     {
-                        writer.WriteLineAsync("Сервер: соединение установленно");
-                        writer.FlushAsync();
-                    };
-                }
+
+                        TcpClient? tcpClient = listener.AcceptTcpClient();
+
+                        clients.Add(tcpClient);
+
+                        Task entry = Task.Run(() => ProcessClient(tcpClient));
+
+                        Console.WriteLine("Успешно подключен");
+
+                        using (StreamWriter writer = new StreamWriter(tcpClient.GetStream(), leaveOpen: true))
+                        {
+                            writer.WriteLineAsync("Сервер: соединение установленно");
+                            writer.FlushAsync();
+                        };
+                    }
             }
             catch (Exception ex)
             {
@@ -114,7 +120,7 @@ namespace Server
                 {
                     lock (clients)
                     {
-                        clients.Remove(client); 
+                        clients.Remove(client);
                     }
                     client.GetStream().Close();
                     client.Close();
