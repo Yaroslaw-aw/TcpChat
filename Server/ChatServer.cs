@@ -1,19 +1,25 @@
-﻿using System.Net;
+﻿using System.Collections.Concurrent;
+using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
 
 namespace Server
 {
-    internal class ChatServer
+    internal class ChatServer : IDisposable
     {
         TcpListener listener;
 
-        HashSet<TcpClient> senders = new HashSet<TcpClient>(); // добавляет только уникальных пользователей
+        CuncurrentHashSet<TcpClient> senders = new CuncurrentHashSet<TcpClient>(); // добавляет только уникальных пользователей
 
         public ChatServer(IPEndPoint? endPoint)
         {
             listener = new TcpListener(endPoint);
+        }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -48,7 +54,7 @@ namespace Server
             }
             catch (Exception ex)
             {
-                Console.Out.WriteLineAsync(ex.Message);
+                Console.WriteLine(ex.Message);
             }
             finally
             {
@@ -103,7 +109,11 @@ namespace Server
                 }
                 finally
                 {
-                    senders.Remove(client); // высвобождаем ресурсы
+                    lock (senders)
+                    {
+                        senders.Remove(client); // высвобождаем ресурсы
+                    }
+                    client.GetStream().Close();
                     client.Close();
                 }
             }
@@ -111,7 +121,7 @@ namespace Server
             void Dispose() // У меня вопрос: правильный ли вообще этот метод?
             {
                 listener.Stop();
-                listener.Dispose();
+                listener.Server.Dispose();
                 GC.SuppressFinalize(this);
             }
         }
