@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
@@ -16,17 +17,7 @@ namespace Server
         {
             if (endPoint != null)
                 listener = new TcpListener(endPoint);
-        }
-
-        public void Dispose()
-        {
-            if (listener != null)
-            {
-                listener.Stop();
-                listener.Server.Dispose();
-            }
-            GC.SuppressFinalize(this);
-        }
+        }        
 
         /// <summary>
         /// Запуск сервера
@@ -34,7 +25,6 @@ namespace Server
         /// <returns></returns>
         public void Run(object? state, bool timeOut)
         {
-            Console.Out.WriteLineAsync("Сервер\n" + new string('-', 6));
             try
             {
                 if (listener != null)
@@ -45,14 +35,13 @@ namespace Server
                 if (listener != null)
                     while (true)
                     {
-
                         TcpClient? tcpClient = listener.AcceptTcpClient();
 
                         clients.Add(tcpClient);
 
-                        Task entry = Task.Run(() => ProcessClient(tcpClient));
+                        Task entry = ProcessClient(tcpClient);
 
-                        Console.WriteLine("Успешно подключен");
+                        Console.WriteLine($"Клиент {tcpClient.GetHashCode()} Успешно подключен");
 
                         using (StreamWriter writer = new StreamWriter(tcpClient.GetStream(), leaveOpen: true))
                         {
@@ -69,63 +58,73 @@ namespace Server
             {
                 Dispose();
             }
+        }
 
-            /// <summary>
-            /// Прослушивание входящих и отправка всем остальным клиентам сообщений
-            /// </summary>
-            /// <param name="client">присоединяющийся клиент</param>
-            /// <returns></returns>
-            async Task ProcessClient(TcpClient client)
+        /// <summary>
+        /// Прослушивание входящих и отправка всем остальным клиентам сообщений
+        /// </summary>
+        /// <param name="producer">присоединяющийся клиент</param>
+        /// <returns></returns>
+        async Task ProcessClient(TcpClient producer)
+        {
+            try
             {
-                try
+                using var reader = new StreamReader(producer.GetStream());
+
+                string? message;
+
+                while (!string.IsNullOrEmpty(message = await reader.ReadLineAsync())) // если сообщение не пустое
                 {
-                    using var reader = new StreamReader(client.GetStream());
+                    Console.WriteLine($"{message}");
 
-                    string? message;
-
-                    while (!string.IsNullOrEmpty(message = await reader.ReadLineAsync())) // если сообщение не пустое
+                    foreach (var consumer in clients)
                     {
-                        Console.WriteLine($"{message}");
+                        // Создаем StreamWriter для отправки, не сохраняя его
+                        using var writer = new StreamWriter(consumer.GetStream(), leaveOpen: true);
 
-                        foreach (var sender in clients)
+                        if (consumer != producer)
                         {
-                            // Создаем StreamWriter для отправки, не сохраняя его
-                            using var writer = new StreamWriter(sender.GetStream(), leaveOpen: true);
-
-                            if (sender != client)
+                            try
                             {
-                                try
-                                {
-                                    await writer.WriteLineAsync(message);
-                                    await writer.FlushAsync(); // Убедимся, что сообщение отправлено немедленно
-                                }
-                                catch
-                                {
-                                    // Обработка ошибок отправки
-                                }
+                                await writer.WriteLineAsync(message);
+                                await writer.FlushAsync(); // Убедимся, что сообщение отправлено немедленно
                             }
-                            else
+                            catch
                             {
-                                await writer.WriteLineAsync("Сообщение доставлено.");
-                                await writer.FlushAsync();
+                                // Обработка ошибок отправки
                             }
+                        }
+                        else
+                        {
+                            await writer.WriteLineAsync("Сообщение доставлено.");
+                            await writer.FlushAsync();
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Ошибка при обработке клиента: {ex.Message}");
-                }
-                finally // высвобождаем ресурсы
-                {
-                    lock (clients)
-                    {
-                        clients.Remove(client);
-                    }
-                    client.GetStream().Close();
-                    client.Close();
-                }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при обработке клиента: {ex.Message}");
+            }
+            finally // высвобождаем ресурсы
+            {
+                lock (clients)
+                {
+                    clients.Remove(producer);
+                }
+                producer.GetStream().Close();
+                producer.Close();
+            }
+        }
+
+        public void Dispose()
+        {
+            if (listener != null)
+            {
+                listener.Stop();
+                listener.Server.Dispose();
+            }
+            GC.SuppressFinalize(this);
         }
     }
 }

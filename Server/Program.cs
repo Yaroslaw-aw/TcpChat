@@ -12,23 +12,21 @@ namespace Server
             AutoResetEvent stopper = new AutoResetEvent(false);
             RegisteredWaitHandle handle = ThreadPool.RegisterWaitForSingleObject(stopper, tcpServer.Run, null, Timeout.Infinite, true);
 
-            string operation = "S";
+            stopper.Set();
 
-            Console.WriteLine("Q - выход");
+            Console.WriteLine("Сервер\n");
+
+            Console.WriteLine("Q - остановка сервера\n" + new string('-', 21));
 
             while (true)
             {
-                if (operation == "S")
-                {
-                    stopper.Set();
-                }
+                string operation = Console.ReadKey(true).KeyChar.ToString().ToUpper();
+
                 if (operation == "Q" || operation == "Й")
                 {
                     handle.Unregister(stopper);
                     break;
                 }
-
-                operation = Console.ReadKey(true).KeyChar.ToString().ToUpper();
             }
         }
     }
