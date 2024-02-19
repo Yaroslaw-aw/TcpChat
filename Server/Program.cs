@@ -12,6 +12,8 @@ namespace Server
             AutoResetEvent stopper = new AutoResetEvent(false);
             RegisteredWaitHandle handle = ThreadPool.RegisterWaitForSingleObject(stopper, tcpServer.Run, null, Timeout.Infinite, true);
 
+            Console.WriteLine($"Main : {Thread.CurrentThread.ManagedThreadId}");
+
             stopper.Set();
 
             Console.WriteLine("Сервер\n");

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
@@ -11,7 +12,7 @@ namespace Server
     {
         TcpListener? listener;
 
-        CuncurrentHashSet<TcpClient> clients = new CuncurrentHashSet<TcpClient>(); // добавляет только уникальных пользователей
+        CuncurrentHashSet<TcpClient> clients = new CuncurrentHashSet<TcpClient>(); // добавляет только уникальных пользователей        
 
         public ChatServer(IPEndPoint? endPoint)
         {
@@ -31,6 +32,7 @@ namespace Server
                     listener.Start();
 
                 Console.Out.WriteLineAsync("Запущен");
+                Console.WriteLine($"{Thread.CurrentThread.ManagedThreadId}");
 
                 if (listener != null)
                     while (true)
@@ -38,6 +40,8 @@ namespace Server
                         TcpClient? tcpClient = listener.AcceptTcpClient();
 
                         clients.Add(tcpClient);
+
+                        Console.WriteLine($"{Thread.CurrentThread.ManagedThreadId}");
 
                         Task entry = ProcessClient(tcpClient);
 
@@ -67,6 +71,7 @@ namespace Server
         /// <returns></returns>
         async Task ProcessClient(TcpClient producer)
         {
+            Console.WriteLine($"{Thread.CurrentThread.ManagedThreadId}");
             try
             {
                 using var reader = new StreamReader(producer.GetStream());
@@ -75,7 +80,7 @@ namespace Server
 
                 while (!string.IsNullOrEmpty(message = await reader.ReadLineAsync())) // если сообщение не пустое
                 {
-                    Console.WriteLine($"{message}");
+                    Console.WriteLine($"{message} ThreadID : {Thread.CurrentThread.ManagedThreadId}");
 
                     foreach (var consumer in clients)
                     {
