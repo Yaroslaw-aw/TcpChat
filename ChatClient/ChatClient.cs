@@ -52,8 +52,6 @@ namespace Client
                     await writer.WriteLineAsync(message);
                     await writer.FlushAsync();
                 }
-
-                //client.Close();
             }
             catch (Exception)
             {

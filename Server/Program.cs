@@ -9,14 +9,10 @@ namespace Server
             IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 55555);
             ChatServer tcpServer = new ChatServer(endPoint);
 
-            AutoResetEvent starter = new AutoResetEvent(false);
+            AutoResetEvent starter = new AutoResetEvent(true);
             RegisteredWaitHandle handle = ThreadPool.RegisterWaitForSingleObject(starter, tcpServer.Run, null, Timeout.Infinite, true);
 
-            starter.Set();
-
-            Console.WriteLine("Сервер\n");
-
-            Console.WriteLine("Q - остановка сервера\n" + new string('-', 21));
+            Console.WriteLine("Сервер\n\nQ - остановка сервера\n" + new string('-', 21));
 
             while (true)
             {

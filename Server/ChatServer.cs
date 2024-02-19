@@ -40,8 +40,6 @@ namespace Server
 
                         clients.Add(tcpClient);
 
-                        Console.WriteLine($"{Thread.CurrentThread.ManagedThreadId}");
-
                         Task entry = ProcessClient(tcpClient);
 
                         Console.WriteLine($"Клиент {tcpClient.GetHashCode()} Успешно подключен");
