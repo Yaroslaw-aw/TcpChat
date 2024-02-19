@@ -12,12 +12,14 @@ namespace Server
     {
         TcpListener? listener;
 
-        CuncurrentHashSet<TcpClient> clients = new CuncurrentHashSet<TcpClient>(); // добавляет только уникальных пользователей        
+        CuncurrentHashSet<TcpClient> clients; // добавляет только уникальных пользователей
 
         public ChatServer(IPEndPoint? endPoint)
         {
             if (endPoint != null)
                 listener = new TcpListener(endPoint);
+
+            clients = new CuncurrentHashSet<TcpClient>();
         }        
 
         /// <summary>
