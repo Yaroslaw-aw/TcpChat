@@ -25,7 +25,7 @@ namespace Client
         /// <returns></returns>
         public async Task Run()
         {
-            await Console.Out.WriteLineAsync($"Клиент {GetHashCode()}\n {Thread.CurrentThread.ManagedThreadId}" + new string('-', 15));
+            await Console.Out.WriteLineAsync($"Клиент {GetHashCode()}\n" + new string('-', 15));
             try
             {
                 await client.ConnectAsync(endPoint); // Асинхронное подключение

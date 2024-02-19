@@ -32,7 +32,6 @@ namespace Server
                     listener.Start();
 
                 Console.Out.WriteLineAsync("Запущен");
-                Console.WriteLine($"{Thread.CurrentThread.ManagedThreadId}");
 
                 if (listener != null)
                     while (true)
@@ -71,7 +70,6 @@ namespace Server
         /// <returns></returns>
         async Task ProcessClient(TcpClient producer)
         {
-            Console.WriteLine($"{Thread.CurrentThread.ManagedThreadId}");
             try
             {
                 using var reader = new StreamReader(producer.GetStream());
@@ -80,7 +78,7 @@ namespace Server
 
                 while (!string.IsNullOrEmpty(message = await reader.ReadLineAsync())) // если сообщение не пустое
                 {
-                    Console.WriteLine($"{message} ThreadID : {Thread.CurrentThread.ManagedThreadId}");
+                    Console.WriteLine($"{message}");
 
                     foreach (var consumer in clients)
                     {
