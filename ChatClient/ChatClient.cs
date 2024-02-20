@@ -38,7 +38,8 @@ namespace Client
                 var receiveTask = ReceiveMessages(reader); // Задача для получения сообщений
 
                 // Отправка сообщений в цикле
-                while (!token.IsCancellationRequested)
+                //!token.IsCancellationRequested
+                while (!tokenSource.IsCancellationRequested)
                 {
                     string? message = Console.ReadLine();
                     if (string.IsNullOrEmpty(message)) continue; // Если ввод пустой, делаем вид, что ничего не произошло
@@ -46,7 +47,8 @@ namespace Client
                     if (message.ToLower() == "exit")
                     {
                         tokenSource.Cancel();
-                        token.ThrowIfCancellationRequested();
+                        continue;
+                        //token.ThrowIfCancellationRequested();
                     }
 
                     await writer.WriteLineAsync(message);
@@ -59,6 +61,7 @@ namespace Client
             }
             finally
             {
+                await Console.Out.WriteLineAsync("Good-bye!");
                 client.Close();
             }
         }
